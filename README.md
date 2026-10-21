@@ -7,6 +7,16 @@ Hermes Desktop runs each Group Chat member's turn in a hidden session, so while 
 shows "working…" you cannot see which tool a Bot is running or why it is slow. Bot Activity
 records that activity through Hermes's public plugin hooks and shows it in Desktop.
 
+## Screenshots
+
+**By bot**: a Bot's turn with its reply expanded.
+
+![Bot Activity, By bot view](docs/screenshots/by-bot.png)
+
+**By Group Chat**: one section per room, a Bot working live, and 1:1 chats under *Direct chats*.
+
+![Bot Activity, By Group Chat view](docs/screenshots/by-group-chat.png)
+
 ## Features
 
 - **Live timeline per turn.** Tool calls show their name, a one-line argument preview, status
