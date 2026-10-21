@@ -28,6 +28,7 @@ import functools
 import json
 import logging
 import math
+import re
 import sys
 import threading
 import time
@@ -53,6 +54,13 @@ JSON_MAX_STRING = 2000
 REDACT_MARGIN = 1024
 PENDING_MAX = 500
 REDACTION_UNAVAILABLE = "[redacted: redaction unavailable]"
+
+# Desktop Group Chat member prompts (apps/desktop/src/plugins/hermes-bots/group-round-prompt.ts):
+# `[Group chat: "<room>"] You are @bot, ...` + this header + one `Name (user): text` /
+# `Name: text` line per new room message.
+GROUP_PROMPT_PREFIX = '[Group chat: "'
+GROUP_DELTA_HEADER = "New messages in the room since your last turn (oldest first):"
+GROUP_USER_LINE = re.compile(r"^[^\n:]{1,80} \(user\): (?P<text>.+)$", re.M)
 
 _ROOM_STREAM_KINDS = {"reasoning.delta": "reasoning", "message.delta": "message", "message.interim": "message"}
 
@@ -119,6 +127,35 @@ def _json_field(value: Any, limit: int) -> Optional[str]:
         # Tool results are usually JSON text already; keep them parseable when they fit.
         return _clip(value, limit)
     return _clip(json.dumps(_jsonable(value), ensure_ascii=False, default=str), limit)
+
+
+def _message_text(message: Any) -> str:
+    """Plain text of a user message: multimodal messages are a list of content parts, and only
+    their text parts belong in a title (an image part is megabytes of base64)."""
+    if isinstance(message, str):
+        return message
+    if isinstance(message, (list, tuple)):
+        parts = []
+        for part in message:
+            if isinstance(part, str):
+                parts.append(part)
+            elif isinstance(part, dict) and part.get("type") in (None, "text", "input_text"):
+                parts.append(str(part.get("text") or ""))
+        return "\n".join(p for p in parts if p)
+    return "" if message is None else str(message)
+
+
+def _turn_title(message: Any) -> Optional[str]:
+    """What started the turn, readable: for a Group Chat member prompt that is the newest user
+    line of the room delta (or its first line when another Bot spoke), not the prompt header."""
+    text = _message_text(message)
+    if text.startswith(GROUP_PROMPT_PREFIX) and GROUP_DELTA_HEADER in text:
+        delta = text.split(GROUP_DELTA_HEADER, 1)[1]
+        user_lines = GROUP_USER_LINE.findall(delta)
+        lines = [line.strip() for line in delta.splitlines() if line.strip()]
+        text = user_lines[-1] if user_lines else (lines[0] if lines else text)
+    text = " ".join(text[:TITLE_CHARS * 4].split())
+    return _clip(text, TITLE_CHARS) if text else None
 
 
 def _ms(value: Any) -> Optional[int]:
@@ -225,7 +262,7 @@ def register(ctx) -> None:
     def on_pre_llm_call(session_id=None, turn_id=None, user_message=None, model=None, platform=None,
                         **_kw) -> None:
         submit(key=turn_key(session_id, turn_id, start=True), kind="turn", status="running",
-               session_id=session_id, turn_id=turn_id, title=_clip(user_message, TITLE_CHARS) or "(turn)",
+               session_id=session_id, turn_id=turn_id, title=_turn_title(user_message) or "(turn)",
                args=_json_field({"model": model, "platform": platform}, cap))
 
     @_observer

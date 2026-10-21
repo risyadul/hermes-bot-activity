@@ -74,4 +74,14 @@ assert len(rows) == 8, len(rows)
 inc = api.activity(since=res["rev"], bot=None, room=None, limit=300); assert inc["rows"] == [], inc
 bots = api.bots(); print("bots:", [(b["bot"], len(b["active"])) for b in bots["bots"]])
 print("cleared:", api.clear({})["deleted"]); assert api.activity(since=0, bot=None, room=None, limit=10)["rows"] == []
+# Turn titles: multimodal parts -> text only; Group Chat prompt -> newest user line.
+tt = pkg._turn_title
+assert tt([{"type": "text", "text": "fix the login bug"}, {"type": "image_url", "image_url": {"url": "data:image/png;base64," + "A" * 100000}}]) == "fix the login bug"
+room_prompt = ('[Group chat: "Demo Room"] You are @demo, one participant in a group chat with the user.\n\n'
+               "New messages in the room since your last turn (oldest first):\n"
+               "You (user): first ask\nPlanner: I will look\nYou (user): list the files in /tmp please")
+assert tt(room_prompt) == "list the files in /tmp please", tt(room_prompt)
+bot_only = room_prompt.split("New messages")[0] + "New messages in the room since your last turn (oldest first):\nPlanner: over to you"
+assert tt(bot_only) == "Planner: over to you", tt(bot_only)
+assert tt("plain 1:1 message") == "plain 1:1 message" and tt(None) is None
 print("ALL CHECKS PASSED  (db:", pkg.store.default_db_path() if hasattr(pkg, "store") else home, ")")
