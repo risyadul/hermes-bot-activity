@@ -1,0 +1,13 @@
+name: bot-activity
+version: 0.1.0
+description: Live per-Bot activity feed for Hermes Desktop — LLM turns, tool calls (args, result, duration), approvals, and Group Chat reasoning/message streams, merged into one timeline pane.
+author: risyadul
+requires_hermes: ">=0.21.6"
+provides_hooks:
+  - pre_llm_call
+  - post_llm_call
+  - pre_tool_call
+  - post_tool_call
+  - pre_approval_request
+  - post_approval_response
+  - on_room_member_activity

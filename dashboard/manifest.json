@@ -1,0 +1,9 @@
+{
+  "name": "bot-activity",
+  "label": "Bot Activity",
+  "description": "Backend for the Bot Activity desktop pane (no web-dashboard tab).",
+  "icon": "Activity",
+  "version": "0.1.0",
+  "tab": { "hidden": true },
+  "api": "plugin_api.py"
+}
