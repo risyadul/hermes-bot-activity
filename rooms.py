@@ -217,9 +217,10 @@ def _ui_meta(path: Path) -> dict:
         if cached and cached[0] == mtime:
             return cached[1]
     try:
-        import yaml
+        # Hermes's own YAML loader (ruamel-backed, in core since 0.21.6); PyYAML is not shipped.
+        import hermes_yaml
 
-        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        data = hermes_yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except Exception:
         logger.debug("bot-activity: unreadable %s", path, exc_info=True)
         return {}

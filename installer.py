@@ -125,11 +125,12 @@ def _plugin_sets(config: Path) -> tuple[frozenset, frozenset]:
     cached = _config_cache.get(config)
     if cached and cached[0] == stamp:
         return cached[1]
-    import yaml
+    # Hermes's own YAML loader (ruamel-backed, in core since 0.21.6); PyYAML is not shipped.
+    import hermes_yaml
 
     try:
-        data = yaml.safe_load(config.read_text(encoding="utf-8")) or {}
-    except (OSError, yaml.YAMLError):
+        data = hermes_yaml.safe_load(config.read_text(encoding="utf-8")) or {}
+    except Exception:
         logger.debug("bot-activity: unreadable %s", config, exc_info=True)
         return frozenset(), frozenset()
     plugins = data.get("plugins") if isinstance(data, dict) else None

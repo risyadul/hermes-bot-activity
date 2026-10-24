@@ -12,12 +12,23 @@ real ~/.hermes.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import time
 from pathlib import Path
 
 SCENARIOS_DIR = Path(__file__).resolve().parent / "scenarios"
+
+
+def _hermes_env() -> dict[str, str]:
+    """Put the Hermes source dir on PYTHONPATH, as Hermes's own launcher does. A venv's editable
+    install can predate newer top-level core modules (e.g. ``hermes_yaml``) and not map them."""
+    import hermes_constants
+
+    source = str(Path(hermes_constants.__file__).resolve().parent)
+    existing = os.environ.get("PYTHONPATH")
+    return {**os.environ, "PYTHONPATH": source + (os.pathsep + existing if existing else "")}
 SCENARIO_TIMEOUT_S = 180
 
 
@@ -28,12 +39,13 @@ def main(names: list[str]) -> int:
         if not scenarios:
             print(f"no scenario named {names}; have: {[s.stem for s in sorted(SCENARIOS_DIR.glob('*.py'))]}")
             return 2
+    env = _hermes_env()
     failed = []
     for scenario in scenarios:
         started = time.monotonic()
         try:
             proc = subprocess.run([sys.executable, str(scenario)], capture_output=True, text=True,
-                                  timeout=SCENARIO_TIMEOUT_S)
+                                  timeout=SCENARIO_TIMEOUT_S, env=env)
             ok, output = proc.returncode == 0, proc.stdout + proc.stderr
         except subprocess.TimeoutExpired:
             ok, output = False, f"timed out after {SCENARIO_TIMEOUT_S}s"
